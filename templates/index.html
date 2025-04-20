@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Unit Converter</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .container { width: 400px; margin: 0 auto; }
+        h1 { text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        select, input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { padding: 10px 15px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        .result { margin-top: 20px; font-weight: bold; }
+        .error { color: red; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Unit Converter</h1>
+        <form id="converterForm">
+            <div class="form-group">
+                <label for="category">Category:</label>
+                <select name="category" id="category">
+                    {% for cat in categories %}
+                        <option value="{{ cat }}">{{ cat|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="from_unit">From Unit:</label>
+                <select name="from_unit" id="from_unit"></select>
+            </div>
+            <div class="form-group">
+                <label for="to_unit">To Unit:</label>
+                <select name="to_unit" id="to_unit"></select>
+            </div>
+            <div class="form-group">
+                <label for="value">Value:</label>
+                <input type="number" name="value" id="value" step="any">
+            </div>
+            <button type="submit">Convert</button>
+        </form>
+
+        <div class="result"></div>
+        <div class="error"></div>
+    </div>
+
+    <script>
+        const conversion_rates = {{ conversion_rates|tojson|safe }};
+        const categorySelect = document.getElementById('category');
+        const fromUnitSelect = document.getElementById('from_unit');
+        const toUnitSelect = document.getElementById('to_unit');
+        const valueInput = document.getElementById('value');
+        const resultDiv = document.querySelector('.result');
+        const errorDiv = document.querySelector('.error');
+        const converterForm = document.getElementById('converterForm');
+
+        function updateUnitOptions() {
+            const selectedCategory = categorySelect.value;
+            fromUnitSelect.innerHTML = '';
+            toUnitSelect.innerHTML = '';
+
+            if (selectedCategory && conversion_rates[selectedCategory]) {
+                for (const unit in conversion_rates[selectedCategory]) {
+                    const option1 = document.createElement('option');
+                    option1.value = unit;
+                    option1.textContent = unit.charAt(0).toUpperCase() + unit.slice(1);
+                    fromUnitSelect.appendChild(option1);
+
+                    const option2 = document.createElement('option');
+                    option2.value = unit;
+                    option2.textContent = unit.charAt(0).toUpperCase() + unit.slice(1);
+                    toUnitSelect.appendChild(option2);
+                }
+            }
+        }
+
+        function convert() {
+            const category = categorySelect.value;
+            const fromUnit = fromUnitSelect.value;
+            const toUnit = toUnitSelect.value;
+            const value = parseFloat(valueInput.value);
+
+            if (isNaN(value)) {
+                errorDiv.textContent = "Please enter a valid numeric value.";
+                resultDiv.textContent = "";
+                return;
+            }
+
+            let result;
+
+            if (category === 'temperature') {
+                let celsiusValue;
+                if (fromUnit === 'celsius') {
+                    celsiusValue = value;
+                } else if (fromUnit === 'fahrenheit') {
+                    celsiusValue = (value - 32) * 5 / 9;
+                } else if (fromUnit === 'kelvin') {
+                    celsiusValue = value - 273.15;
+                }
+
+                if (toUnit === 'celsius') {
+                    result = celsiusValue;
+                } else if (toUnit === 'fahrenheit') {
+                    result = (celsiusValue * 9 / 5) + 32;
+                } else if (toUnit === 'kelvin') {
+                    result = celsiusValue + 273.15;
+                } else {
+                    errorDiv.textContent = "Invalid temperature units selected.";
+                    resultDiv.textContent = "";
+                    return;
+                }
+            } else if (category && conversion_rates[category] && conversion_rates[category][fromUnit] !== undefined && conversion_rates[category][toUnit] !== undefined) {
+                const fromRate = conversion_rates[category][fromUnit];
+                const toRate = conversion_rates[category][toUnit];
+                result = (value * fromRate) / toRate;
+            } else {
+                errorDiv.textContent = "Invalid conversion units selected.";
+                resultDiv.textContent = "";
+                return;
+            }
+
+            errorDiv.textContent = "";
+            resultDiv.textContent = `${value} ${fromUnit.charAt(0).toUpperCase() + fromUnit.slice(1)} is ${result.toFixed(4)} ${toUnit.charAt(0).toUpperCase() + toUnit.slice(1)}`;
+        }
+
+        categorySelect.addEventListener('change', updateUnitOptions);
+        converterForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            convert();
+        });
+
+        // Initial population of unit options
+        updateUnitOptions();
+    </script>
+</body>
+</html>
